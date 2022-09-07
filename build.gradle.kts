@@ -11,37 +11,20 @@ repositories {
 }
 
 kotlin {
-    val hostOs = System.getProperty("os.name")
-    val nativeTarget = when {
-        hostOs == "Mac OS X" -> macosX64("native")
-        hostOs == "Linux" -> linuxX64("native")
-        hostOs.startsWith("Windows") -> mingwX64("native")
-        else -> throw GradleException("Host OS is not supported in Kotlin/Native.")
-    }
-
-    nativeTarget.apply {
+    macosX64  {
         binaries {
             executable {
                 entryPoint = "main"
             }
         }
-
-        compilations["main"].cinterops {
-            val hidInterop by creating {
-                defFile("src/nativeInterop/hidapi/hidapi.def")
-            }
-            val usbInterop by creating {
-                defFile("src/nativeInterop/libusb/libusb.def")
-            }
-        }
     }
     sourceSets {
-        val nativeMain by getting {
+        val commonMain by getting {
             dependencies {
                 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
             }
         }
-        val nativeTest by getting
+        val macosX64Main by getting
     }
 }

@@ -1,4 +1,0 @@
-package = hidapi
-headers = hidapi.h
-compilerOpts = -I /usr/local/include/hidapi
-linkerOpts = -L /usr/local/lib -l hidapi

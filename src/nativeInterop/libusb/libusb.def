@@ -1,4 +1,0 @@
-package = libusb
-headers = libusb.h
-compilerOpts = -I /usr/local/include/libusb-1.0
-linkerOpts = -L /usr/local/lib -l usb-1.0
