@@ -25,7 +25,8 @@ data class ConfigFile(
 data class ConfigRegistration(
     val key: KeyType,
     val description: String,
-    val command: Command,
+    val appBundleId: String? = null,
+    val command: Command? = null
 )
 
 @Serializable

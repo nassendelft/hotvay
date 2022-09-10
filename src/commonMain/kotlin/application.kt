@@ -2,7 +2,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 
 interface Action {
-    fun execute(): String?
+    suspend fun execute(): String?
 }
 
 private val registrationMap = mutableMapOf<KeyEvent, Registration>()
