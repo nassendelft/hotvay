@@ -1,16 +1,26 @@
+import kotlinx.coroutines.flow.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
-private const val FILE_CONFIG = ".hotvay"
+private val FILE_CONFIG = userHomeDir?.let { "$it/.hotvay" }
+    ?: error("could not determine home dir")
 
-fun readConfiguration(): Config {
-    val configFile = userHomeDir?.let { "$it/$FILE_CONFIG" }
-        ?: error("could not determine home dir")
-    val bytes = readFileToString(configFile)
-    val config: ConfigFile = Json.decodeFromString(bytes)
-    return Config(configToRegistrations(config))
-}
+fun readConfiguration() = watchFile(FILE_CONFIG)
+    .onStart { emit(Unit) }
+    .mapNotNull { readFileToString(FILE_CONFIG) }
+    .distinctUntilChanged()
+    .mapNotNull {
+        // using try catch here instead of the catch operator
+        // because for some reason the exceptions are not caught there.
+        try {
+            Json.decodeFromString<ConfigFile>(it)
+        } catch (e: Exception) {
+            println("Failed parsing config file: ${e.message}")
+            null
+        }
+    }
+    .map { Config(configToRegistrations(it)) }
 
 data class Config(
     val registrations: List<Registration>
@@ -37,3 +47,4 @@ data class Command(
 )
 
 expect fun configToRegistrations(config: ConfigFile): List<Registration>
+expect fun watchFile(vararg filePath: String): Flow<Unit>

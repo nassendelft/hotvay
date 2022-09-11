@@ -28,7 +28,7 @@ fun registerAction(registration: Registration) {
 }
 
 fun registerActions(registrations: List<Registration>) {
-    if (registrations.isNotEmpty()) println("Warning: replacing registrations")
+    println("Registered (${registrations.size}) actions")
     registrationMap.clear()
     registrationMap.putAll(registrations.associateBy { it.keyEvent })
 }

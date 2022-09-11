@@ -59,6 +59,7 @@ actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<DeviceEven
     invokeOnClose {
         IOHIDManagerClose(managerRef, kIOHIDOptionsTypeNone)
         context.dispose()
+        CFRelease(deviceMatch)
         CFRunLoopStop(runLoop)
     }
 

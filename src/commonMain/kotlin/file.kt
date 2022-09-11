@@ -21,15 +21,21 @@ private fun getFileSize(handle: CPointer<FILE>): Long {
     return size
 }
 
-fun readFileToString(path: String) = memScoped {
-    openFile(path) {
-        val size = getFileSize(it)
+private fun fileExists(path: String) = access(path, F_OK) == 0
 
-        val stringRef = allocArray<ByteVar>(size + 1)
+fun readFileToString(path: String): String? {
+    if (!fileExists(path)) return null
 
-        val bytesRead = fread(stringRef, size.toULong(), 1, it)
-        if (bytesRead == 0.toULong()) error("Read $bytesRead bytes")
+    return memScoped {
+        openFile(path) {
+            val size = getFileSize(it)
 
-        stringRef.toKStringFromUtf8()
+            val stringRef = allocArray<ByteVar>(size + 1)
+
+            val bytesRead = fread(stringRef, size.toULong(), 1, it)
+            if (bytesRead == 0.toULong()) error("Read $bytesRead bytes")
+
+            stringRef.toKStringFromUtf8()
+        }
     }
 }
