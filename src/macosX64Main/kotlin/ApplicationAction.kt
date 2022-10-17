@@ -28,7 +28,7 @@ class ApplicationAction(private val bundleId: String) : Action {
         } else {
             val runningApp = findRunningApp(bundleId)
             if (runningApp != null) {
-                println("Activating app")
+                println("Activating app: $bundleId")
                 runningApp.activateWithOptions(NSApplicationActivateIgnoringOtherApps)
             } else {
                 openApp(bundleId)

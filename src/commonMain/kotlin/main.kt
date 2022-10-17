@@ -14,7 +14,7 @@ fun main(): Unit = runBlocking {
     launch(Dispatchers.Default) {
         getDeviceActions().collect {
             launch(Dispatchers.Default) {
-                println("Result: ${it.execute()}")
+                it.execute()?.let { result -> println("Result: $result") }
             }
         }
     }
