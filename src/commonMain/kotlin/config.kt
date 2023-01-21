@@ -7,16 +7,15 @@ private val FILE_CONFIG = userHomeDir?.let { "$it/.hotvay" }
     ?: error("could not determine home dir")
 
 fun readConfiguration() = watchFile(FILE_CONFIG)
-    .onStart { emit(Unit) }
+    .onEach { println("[INFO] config file change detected") }
+    .onStart { emit(Unit) } // forces first read
     .mapNotNull { readFileToString(FILE_CONFIG) }
     .distinctUntilChanged()
     .mapNotNull {
-        // using try catch here instead of the catch operator
-        // because for some reason the exceptions are not caught there.
         try {
             Json.decodeFromString<ConfigFile>(it)
         } catch (e: Exception) {
-            println("Failed parsing config file: ${e.message}")
+            println("[ERROR] Failed parsing config file: ${e.message}")
             null
         }
     }

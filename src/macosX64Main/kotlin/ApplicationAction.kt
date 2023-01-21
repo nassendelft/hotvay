@@ -1,7 +1,6 @@
 import platform.AppKit.*
 import platform.CoreFoundation.CFRelease
 import platform.CoreGraphics.*
-import platform.GameController.GCKeyCode
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
@@ -21,24 +20,27 @@ class ApplicationAction(private val bundleId: String) : Action {
             }
     }
 
-    override suspend fun execute(): String? {
-        println("Active app: $runningApp")
+    override suspend fun execute(): Boolean {
+        println("[INFO] Current focused app: $runningApp")
+
         if (runningApp == bundleId) {
+            println("[INFO] Toggling window for app: $bundleId")
             toggleWindow()
-        } else {
-            val runningApp = findRunningApp(bundleId)
-            if (runningApp != null) {
-                println("Activating app: $bundleId")
-                runningApp.activateWithOptions(NSApplicationActivateIgnoringOtherApps)
-            } else {
-                openApp(bundleId)
-            }
+            return true
         }
-        return null
+
+        val runningApp = findRunningApp(bundleId)
+        if (runningApp != null) {
+            println("[INFO] Focusing app: $bundleId")
+            runningApp.activateWithOptions(NSApplicationActivateIgnoringOtherApps)
+        } else {
+            println("[INFO] Opening app: $bundleId")
+            openApp(bundleId)
+        }
+        return true
     }
 
     private suspend fun openApp(bundleId: String) {
-        println("opening app")
         suspendCoroutine { continuation ->
             NSWorkspace.sharedWorkspace.openApplicationAtURL(
                 NSWorkspace.sharedWorkspace.URLForApplicationWithBundleIdentifier(bundleId)!!,
@@ -59,7 +61,6 @@ class ApplicationAction(private val bundleId: String) : Action {
         .find { it.bundleIdentifier == bundleId }
 
     private fun toggleWindow() {
-        println("toggling window")
         // TODO read shortcut keys from system: https://stackoverflow.com/a/879437/571088
         val source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState)
         val commandUp = CGEventCreateKeyboardEvent(source, commandKey, false)

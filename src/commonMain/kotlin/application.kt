@@ -1,34 +1,44 @@
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 interface Action {
-    suspend fun execute(): String?
+    suspend fun execute(): Boolean
 }
 
 private val registrationMap = mutableMapOf<KeyEvent, Registration>()
-val registrations: Collection<Registration> get() = registrationMap.values
+
+internal suspend fun runApplication() = withContext(Dispatchers.Main) {
+    launch(Dispatchers.Default) {
+        readConfiguration()
+            .map { it.registrations }
+            .onEach { println("[INFO] Loading ${it.size} action${if (it.size == 1) "" else "s"}") }
+            .collect(::registerActions)
+    }
+
+    launch(Dispatchers.Default) {
+        getDeviceActions().collect(::executeAction)
+    }
+}
+
+private fun CoroutineScope.executeAction(it: Action) {
+    launch(Dispatchers.Default) { println("[INFO] Action result: ${it.execute()}") }
+}
 
 /*
 Vaydeer - 9-key Smart Keypad
   vendorId:      0x0483
   productId:     0x5752
 */
-fun getDeviceActions() = connectDevice(0x0483, 0x5752)
+private fun getDeviceActions() = connectDevice(0x0483, 0x5752)
     .flowOn(Dispatchers.Default)
-    .onEach { println(it) }
+    .onEach { println("[INFO] Device state change: $it") }
     .filterIsInstance<DeviceEvent.Key>()
     .mapNotNull(::getAction)
 
-fun registerAction(registration: Registration) {
-    if (registrationMap.containsKey(registration.keyEvent)) {
-        println("Warning: overwriting key: $registration.keyAction")
-    }
-
-    registrationMap[registration.keyEvent] = registration
-}
-
-fun registerActions(registrations: List<Registration>) {
-    println("Registered (${registrations.size}) actions")
+private fun registerActions(registrations: List<Registration>) {
     registrationMap.clear()
     registrationMap.putAll(registrations.associateBy { it.keyEvent })
 }
@@ -44,3 +54,5 @@ data class Registration(
 )
 
 data class KeyEvent(val key: KeyType, val state: KeyState = KeyState.UP)
+
+internal expect fun connectDevice(vendorId: Int, productId: Int): Flow<DeviceEvent>

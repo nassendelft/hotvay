@@ -11,7 +11,7 @@ import platform.IOKit.*
 // https://developer.apple.com/library/archive/technotes/tn2187/_index.html
 // https://eleccelerator.com/tutorial-about-usb-hid-report-descriptors/
 
-actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<DeviceEvent> {
+internal actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<DeviceEvent> {
     val runLoop = CFRunLoopGetCurrent()
 
     val managerRef = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone)

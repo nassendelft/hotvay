@@ -4,7 +4,7 @@ import platform.Foundation.NSURL.Companion.fileURLWithPath
 
 
 class ExecuteAction(private val command: Command) : Action {
-    override suspend fun execute() = try {
+    override suspend fun execute(): Boolean {
         val pipe = NSPipe()
         val process = NSTask().apply {
             standardOutput = pipe
@@ -18,18 +18,30 @@ class ExecuteAction(private val command: Command) : Action {
         memScoped {
             val error = alloc<ObjCObjectVar<NSError?>>()
             if (!process.launchAndReturnError(error.ptr)) {
-                return "error: ${error.value?.localizedDescription}"
+                println("[ERROR] ${error.value?.localizedDescription}")
+                return false
             }
         }
 
-        process.waitUntilExit()
+        for (data in pipe.fileHandleForReading) {
+            println("[INFO] ${NSString.create(data, NSUTF8StringEncoding)?.toString()?.trim()}")
+        }
 
-        pipe.fileHandleForReading
-            .readDataToEndOfFile()
-            .let { NSString.create(data = it, NSUTF8StringEncoding) }
-            ?.toString()
-            ?: "<< no output >>"
-    } catch (e: Exception) {
-        "Failed executing command: $command"
+        return true
+    }
+
+    private operator fun NSFileHandle.iterator() = ReadIterator(this)
+
+    private class ReadIterator(private val fileHandle: NSFileHandle) : Iterator<NSData> {
+
+        private var data: NSData? = null
+
+        override fun hasNext(): Boolean {
+            val readData = fileHandle.availableData
+            data = readData
+            return readData.length != 0uL
+        }
+
+        override fun next() = data ?: NSData()
     }
 }

@@ -19,7 +19,6 @@ actual fun watchFile(vararg filePath: String) = channelFlow<Unit> {
 
     val callback: FSEventStreamCallback =
         staticCFunction { streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIds ->
-            println("file change detected")
             clientCallBackInfo?.reinterpret<FSEventStreamContext>()
                 ?.asStableRef<ProducerScope<Unit>>()
                 ?.get()
