@@ -1,11 +1,26 @@
 import kotlinx.cinterop.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
 import platform.CoreFoundation.*
+import platform.Foundation.NSLibraryDirectory
+import platform.Foundation.NSSearchPathForDirectoriesInDomains
+import platform.Foundation.NSUserDomainMask
 
 const val kSHKMoveFocusToNextWindow = "27"
 
-fun getKeyboardShortcut(shortcutId: String): KeyboardShortcut {
+private const val symbolicHotKeys = "com.apple.symbolichotkeys"
+
+fun readKeyboardShortcutChanges(shortcutId: String): Flow<KeyboardShortcut> {
+    val libraryDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, true).first()
+    return watchFile("$libraryDir/Preferences/$symbolicHotKeys.plist")
+        .onStart { emit(Unit) } // forces first read
+        .map { readKeyboardShortcut(shortcutId) }
+}
+
+fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut {
     val key = "AppleSymbolicHotKeys".toCFStringRef()
-    val appId = "com.apple.symbolichotkeys".toCFStringRef()
+    val appId = symbolicHotKeys.toCFStringRef()
     val hotkeyPrefList: CFDictionaryRef = CFPreferencesCopyAppValue(key, appId)
         ?.takeIf { CFGetTypeID(it) == CFDictionaryGetTypeID() }
         ?.reinterpret()

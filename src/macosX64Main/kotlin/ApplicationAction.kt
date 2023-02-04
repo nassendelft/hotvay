@@ -54,8 +54,8 @@ class ApplicationAction(private val bundleId: String) : Action {
         .find { it.bundleIdentifier == bundleId }
 
     private fun toggleWindow() {
-        val (enabled, modifiers, virtualKeyCode) = toggleKeyShortcut
-        println("[DEBUG] Toggle keyboard shortcut: $toggleKeyShortcut]")
+        val (enabled, modifiers, virtualKeyCode) = moveFocusToNextWindowShortcut
+        println("[DEBUG] Toggle keyboard shortcut: $moveFocusToNextWindowShortcut")
         if (!enabled) return
 
         val source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState)
@@ -77,10 +77,5 @@ class ApplicationAction(private val bundleId: String) : Action {
         modifiersDown.forEach { CFRelease(it) }
         modifiersUp.forEach { CFRelease(it) }
         CFRelease(source)
-    }
-
-    companion object {
-        // TODO re-read when shortcut changes
-        private val toggleKeyShortcut by lazy { getKeyboardShortcut(kSHKMoveFocusToNextWindow) }
     }
 }

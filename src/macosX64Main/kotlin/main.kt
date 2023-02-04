@@ -1,18 +1,17 @@
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.trySendBlocking
-import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
 import platform.AppKit.NSRunningApplication
 import platform.AppKit.NSWorkspace
 import platform.AppKit.NSWorkspaceApplicationKey
 import platform.AppKit.NSWorkspaceDidActivateApplicationNotification
-import platform.ApplicationServices.AXIsProcessTrusted
-import platform.CoreFoundation.CFRunLoopRun
 import platform.Foundation.NSRunLoop
 import platform.Foundation.run
 
 var focusedApplication: NSRunningApplication? = NSWorkspace.sharedWorkspace.frontmostApplication
+    private set
+
+var moveFocusToNextWindowShortcut: KeyboardShortcut = readKeyboardShortcut(kSHKMoveFocusToNextWindow)
     private set
 
 @OptIn(DelicateCoroutinesApi::class)
@@ -20,15 +19,19 @@ fun main(): Unit = runBlocking {
     val handler = CoroutineExceptionHandler { _, exception ->
         println("CoroutineExceptionHandler got $exception")
     }
+
     GlobalScope.launch(Dispatchers.Main + handler) { runApplication() }
+
+    GlobalScope.launch(Dispatchers.Main + handler) {
+        readKeyboardShortcutChanges(kSHKMoveFocusToNextWindow)
+            .onEach { println("[INFO] shortcut config change detected") }
+            .onEach { moveFocusToNextWindowShortcut = it }
+            .collect()
+    }
 
     NSWorkspace.sharedWorkspace
         .notificationCenter
-        .addObserverForName(
-            NSWorkspaceDidActivateApplicationNotification,
-            null,
-            null
-        ) {
+        .addObserverForName(NSWorkspaceDidActivateApplicationNotification, null, null) {
             println("[DEBUG] Front most application changed")
             focusedApplication = it?.userInfo?.get(NSWorkspaceApplicationKey) as NSRunningApplication?
         }
