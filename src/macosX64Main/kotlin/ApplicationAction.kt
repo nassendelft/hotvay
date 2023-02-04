@@ -1,4 +1,5 @@
 import platform.AppKit.*
+import platform.ApplicationServices.AXIsProcessTrusted
 import platform.CoreFoundation.CFRelease
 import platform.CoreGraphics.*
 import kotlin.coroutines.resumeWithException
@@ -12,6 +13,10 @@ class ApplicationAction(private val bundleId: String) : Action {
         println("[DEBUG] Current focused app: $focusedAppBundleId")
 
         if (focusedAppBundleId == bundleId) {
+            if (!AXIsProcessTrusted()) {
+                println("[WARN] Accessibility permission is not granted")
+                return true
+            }
             println("[DEBUG] Toggling window for app: $bundleId")
             toggleWindow()
             return true

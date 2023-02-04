@@ -7,6 +7,7 @@ import platform.AppKit.NSRunningApplication
 import platform.AppKit.NSWorkspace
 import platform.AppKit.NSWorkspaceApplicationKey
 import platform.AppKit.NSWorkspaceDidActivateApplicationNotification
+import platform.ApplicationServices.AXIsProcessTrusted
 import platform.CoreFoundation.CFRunLoopRun
 import platform.Foundation.NSRunLoop
 import platform.Foundation.run
