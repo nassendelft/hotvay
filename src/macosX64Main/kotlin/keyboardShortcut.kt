@@ -19,8 +19,8 @@ fun readKeyboardShortcutChanges(shortcutId: String): Flow<KeyboardShortcut> {
 }
 
 fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut {
-    val key = "AppleSymbolicHotKeys".toCFStringRef()
-    val appId = symbolicHotKeys.toCFStringRef()
+    val key = "AppleSymbolicHotKeys".toCFString()
+    val appId = symbolicHotKeys.toCFString()
     val hotkeyPrefList: CFDictionaryRef = CFPreferencesCopyAppValue(key, appId)
         ?.takeIf { CFGetTypeID(it) == CFDictionaryGetTypeID() }
         ?.reinterpret()
@@ -50,34 +50,6 @@ private fun getModifierVirtualKeyCodes(mask: Long): List<Modifiers> = memScoped 
     if (mask and 0x20000L == 0x20000L) modifiers.add(Modifiers.SHIFT)
     return modifiers
 }
-
-private fun CFDictionaryRef.getValue(key: String): CPointer<out CPointed> = memScoped {
-    val cfKey = key.toCFStringRef()
-    val value: COpaquePointerVar = alloc()
-    val hasValue: Boolean = CFDictionaryGetValueIfPresent(this@getValue, cfKey, value.ptr)
-    CFRelease(cfKey)
-    if (!hasValue) error("Key '$key' not found")
-    return value.value ?: error("value for key '$key' not found")
-}
-
-private fun CFDictionaryRef.getCFDictionary(key: String): CFDictionaryRef = memScoped { getValue(key).reinterpret() }
-
-private fun CFDictionaryRef.getCFArray(key: String): CFArrayRef = memScoped { getValue(key).reinterpret() }
-
-private fun CFDictionaryRef.getBoolean(key: String): Boolean = memScoped {
-    val boolValue: CFBooleanRef = getValue(key).reinterpret()
-    return CFBooleanGetValue(boolValue)
-}
-
-private fun CFArrayRef.getLong(index: Int): Long = memScoped {
-    val value = CFArrayGetValueAtIndex(this@getLong, index.toLong())
-    val longValue: LongVar = alloc()
-    val hasValue = CFNumberGetValue(value?.reinterpret(), kCFNumberSInt64Type, longValue.ptr)
-    if (!hasValue) error("value for index '$index' not found")
-    return longValue.value
-}
-
-private fun String.toCFStringRef() = CFStringCreateWithCString(null, this, kCFStringEncodingUTF8)
 
 enum class Modifiers(val virtualKeyCode: UShort) {
     SHIFT(0x38u),

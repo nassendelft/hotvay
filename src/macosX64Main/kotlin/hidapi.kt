@@ -4,8 +4,6 @@ import kotlinx.cinterop.*
 import kotlinx.coroutines.channels.*
 import kotlinx.coroutines.flow.*
 import platform.CoreFoundation.*
-import platform.Foundation.CFBridgingRetain
-import platform.Foundation.NSNumber
 import platform.IOKit.*
 
 // https://developer.apple.com/library/archive/technotes/tn2187/_index.html
@@ -16,16 +14,9 @@ internal actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<D
 
     val managerRef = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone)
 
-    val deviceMatch = CFDictionaryCreateMutable(null, 2, null, null)
-    CFDictionarySetValue(
-        deviceMatch,
-        CFStringCreateWithCString(null, kIOHIDVendorIDKey, kCFStringEncodingUTF8),
-        CFBridgingRetain(NSNumber(int = vendorId))
-    )
-    CFDictionarySetValue(
-        deviceMatch,
-        CFStringCreateWithCString(null, kIOHIDProductIDKey, kCFStringEncodingUTF8),
-        CFBridgingRetain(NSNumber(int = productId))
+    val deviceMatch = cfDictionary(
+        kIOHIDVendorIDKey to vendorId.toCFNumber(),
+        kIOHIDProductIDKey to productId.toCFNumber()
     )
 
     IOHIDManagerSetDeviceMatching(managerRef, deviceMatch)
@@ -85,11 +76,10 @@ private fun readDevice(deviceRef: IOHIDDeviceRef?, context: COpaquePointer?) = m
     IOHIDDeviceRegisterInputReportCallback(deviceRef, data, 16, callback, context)
 }
 
-@Suppress("UNCHECKED_CAST")
 private val IOHIDDeviceRef.serial: String?
     get() {
-        val key = CFStringCreateWithCString(null, kIOHIDSerialNumberKey, kCFStringEncodingUTF8)
-        return IOHIDDeviceGetProperty(this, key)?.let { it as CFStringRef }?.toKStringFromUtf8()
+        val key = kIOHIDSerialNumberKey.toCFString()
+        val cfString: CFStringRef? = IOHIDDeviceGetProperty(this, key)?.reinterpret()
+        CFRelease(key)
+        return cfString?.toKStringFromUtf8()
     }
-
-private fun CFStringRef.toKStringFromUtf8() = CFStringGetCStringPtr(this, kCFStringEncodingUTF8)?.toKStringFromUtf8()

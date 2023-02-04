@@ -12,9 +12,7 @@ actual fun watchFile(vararg filePath: String) = channelFlow<Unit> {
     val runLoop = CFRunLoopGetCurrent()
 
     val pathsToWatch = CFArrayCreateMutable(null, filePath.size.toLong(), null).apply {
-        filePath.forEach {
-            CFArrayAppendValue(this, CFStringCreateWithCString(null, it, kCFStringEncodingUTF8))
-        }
+        filePath.forEach { CFArrayAppendValue(this, it.toCFString()) }
     }
 
     val callback: FSEventStreamCallback =
