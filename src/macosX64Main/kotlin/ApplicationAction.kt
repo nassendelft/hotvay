@@ -6,35 +6,23 @@ import kotlin.coroutines.suspendCoroutine
 
 class ApplicationAction(private val bundleId: String) : Action {
 
-    private var runningApp = NSWorkspace.sharedWorkspace.frontmostApplication?.bundleIdentifier
-
-    init {
-        NSWorkspace.sharedWorkspace
-            .notificationCenter
-            .addObserverForName(
-                NSWorkspaceDidActivateApplicationNotification,
-                null,
-                null
-            ) {
-                runningApp = (it?.userInfo?.get(NSWorkspaceApplicationKey) as NSRunningApplication?)?.bundleIdentifier
-            }
-    }
-
     override suspend fun execute(): Boolean {
-        println("[INFO] Current focused app: $runningApp")
+        println("[INFO] executing 'ApplicationAction' with bundleId '$bundleId'")
+        val focusedAppBundleId = focusedApplication?.bundleIdentifier
+        println("[DEBUG] Current focused app: $focusedAppBundleId")
 
-        if (runningApp == bundleId) {
-            println("[INFO] Toggling window for app: $bundleId")
+        if (focusedAppBundleId == bundleId) {
+            println("[DEBUG] Toggling window for app: $bundleId")
             toggleWindow()
             return true
         }
 
         val runningApp = findRunningApp(bundleId)
         if (runningApp != null) {
-            println("[INFO] Focusing app: $bundleId")
+            println("[DEBUG] Focusing app: $bundleId")
             runningApp.activateWithOptions(NSApplicationActivateIgnoringOtherApps)
         } else {
-            println("[INFO] Opening app: $bundleId")
+            println("[DEBUG] Opening app: $bundleId")
             openApp(bundleId)
         }
         return true
@@ -61,27 +49,33 @@ class ApplicationAction(private val bundleId: String) : Action {
         .find { it.bundleIdentifier == bundleId }
 
     private fun toggleWindow() {
-        // TODO read shortcut keys from system: https://stackoverflow.com/a/879437/571088
+        val (enabled, modifiers, virtualKeyCode) = toggleKeyShortcut
+        println("[DEBUG] Toggle keyboard shortcut: $toggleKeyShortcut]")
+        if (!enabled) return
+
         val source = CGEventSourceCreate(kCGEventSourceStateHIDSystemState)
-        val commandUp = CGEventCreateKeyboardEvent(source, commandKey, false)
-        val commandDown = CGEventCreateKeyboardEvent(source, commandKey, true)
-        val backTickUp = CGEventCreateKeyboardEvent(source, backTickKey, false)
-        val backTickDown = CGEventCreateKeyboardEvent(source, backTickKey, true)
-        CGEventSetFlags(backTickDown, kCGEventFlagMaskCommand)
-        CGEventSetFlags(backTickUp, kCGEventFlagMaskCommand)
-        CGEventPost(kCGHIDEventTap, commandDown)
-        CGEventPost(kCGHIDEventTap, backTickDown)
-        CGEventPost(kCGHIDEventTap, backTickUp)
-        CGEventPost(kCGHIDEventTap, commandUp)
-        CFRelease(backTickDown)
-        CFRelease(backTickUp)
-        CFRelease(commandDown)
-        CFRelease(commandUp)
+
+        val modifiersUp = modifiers.map { CGEventCreateKeyboardEvent(source, it.virtualKeyCode, false) }
+        val modifiersDown = modifiers.map { CGEventCreateKeyboardEvent(source, it.virtualKeyCode, true) }
+        val virtualKeyUp = CGEventCreateKeyboardEvent(source, virtualKeyCode.toUShort(), false)
+        val virtualKeyDown = CGEventCreateKeyboardEvent(source, virtualKeyCode.toUShort(), true)
+
+        CGEventSetFlags(virtualKeyDown, kCGEventFlagMaskCommand)
+        CGEventSetFlags(virtualKeyUp, kCGEventFlagMaskCommand)
+        modifiersDown.forEach { CGEventPost(kCGHIDEventTap, it) }
+        CGEventPost(kCGHIDEventTap, virtualKeyDown)
+        CGEventPost(kCGHIDEventTap, virtualKeyUp)
+        modifiersUp.forEach { CGEventPost(kCGHIDEventTap, it) }
+
+        CFRelease(virtualKeyDown)
+        CFRelease(virtualKeyUp)
+        modifiersDown.forEach { CFRelease(it) }
+        modifiersUp.forEach { CFRelease(it) }
         CFRelease(source)
     }
 
     companion object {
-        private const val commandKey: UShort = 0x37u
-        private const val backTickKey: UShort = 0x32u
+        // TODO re-read when shortcut changes
+        private val toggleKeyShortcut by lazy { getKeyboardShortcut(kSHKMoveFocusToNextWindow) }
     }
 }

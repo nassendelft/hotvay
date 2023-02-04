@@ -1,8 +1,5 @@
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 interface Action {
     suspend fun execute(): Boolean
@@ -10,16 +7,20 @@ interface Action {
 
 private val registrationMap = mutableMapOf<KeyEvent, Registration>()
 
-internal suspend fun runApplication() = withContext(Dispatchers.Main) {
+internal suspend fun runApplication() = coroutineScope {
+    println("[INFO] Starting up")
     launch(Dispatchers.Default) {
         readConfiguration()
             .map { it.registrations }
-            .onEach { println("[INFO] Loading ${it.size} action${if (it.size == 1) "" else "s"}") }
+            .onEach { println("[DEBUG] Loading ${it.size} action${if (it.size == 1) "" else "s"}") }
+            .onStart { println("[INFO] Reading setup configuration") }
             .collect(::registerActions)
     }
 
     launch(Dispatchers.Default) {
-        getDeviceActions().collect(::executeAction)
+        getDeviceActions()
+            .onStart { println("[INFO] listening to device events") }
+            .collect(::executeAction)
     }
 }
 
@@ -34,7 +35,7 @@ Vaydeer - 9-key Smart Keypad
 */
 private fun getDeviceActions() = connectDevice(0x0483, 0x5752)
     .flowOn(Dispatchers.Default)
-    .onEach { println("[INFO] Device state change: $it") }
+    .onEach { println("[DEBUG] Device state change: $it") }
     .filterIsInstance<DeviceEvent.Key>()
     .mapNotNull(::getAction)
 
