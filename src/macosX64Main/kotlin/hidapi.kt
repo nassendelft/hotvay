@@ -14,7 +14,7 @@ internal actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<D
 
     val managerRef = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone)
 
-    val deviceMatch = cfDictionary(
+    val deviceMatch = cfDictionaryOf(
         kIOHIDVendorIDKey to vendorId.toCFNumber(),
         kIOHIDProductIDKey to productId.toCFNumber()
     )
@@ -81,5 +81,5 @@ private val IOHIDDeviceRef.serial: String?
         val key = kIOHIDSerialNumberKey.toCFString()
         val cfString: CFStringRef? = IOHIDDeviceGetProperty(this, key)?.reinterpret()
         CFRelease(key)
-        return cfString?.toKStringFromUtf8()
+        return cfString?.getString()
     }

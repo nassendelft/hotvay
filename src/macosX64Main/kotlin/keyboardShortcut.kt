@@ -26,13 +26,17 @@ fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut {
         ?.reinterpret()
         ?: error("Could not read keyboard shortcuts")
 
-    val shortcutDict: CFDictionaryRef = hotkeyPrefList.getCFDictionary(shortcutId)
+    val shortcutDict = hotkeyPrefList.getCFDictionary(shortcutId)
 
     val enabled = shortcutDict.getBoolean("enabled")
 
     val parametersDict = shortcutDict.getCFDictionary("value").getCFArray("parameters")
+
     val virtualKeyCode = parametersDict.getLong(1)
-    val modifiers = getModifierVirtualKeyCodes(parametersDict.getLong(2))
+
+    val mask = parametersDict.getLong(2)
+
+    val modifiers = getModifierVirtualKeyCodes(mask)
 
     CFRelease(appId)
     CFRelease(key)
