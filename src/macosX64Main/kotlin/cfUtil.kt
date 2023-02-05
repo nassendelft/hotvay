@@ -2,6 +2,36 @@ import kotlinx.cinterop.*
 import platform.CoreFoundation.*
 import platform.Foundation.*
 
+fun Set<COpaquePointer?>.toCFSet(): CFSetRef? =
+    (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
+
+fun cfSetOf(vararg items: COpaquePointer?): CFSetRef? = setOf(*items).toCFSet()
+
+@Suppress("UNCHECKED_CAST")
+fun CFSetRef.toSet() = CFBridgingRelease(this) as Set<COpaquePointer?>
+
+val CFSetRef.size get() = CFSetGetCount(this).toInt()
+
+fun MutableSet<*>.toMutableCFSet(): CFMutableSetRef? =
+    (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
+
+@Suppress("FunctionName")
+fun MutableCFSet(capacity: Int = 0) = CFSetCreateMutable(null, capacity.toLong(), null)
+
+fun mutableCFSetOf(vararg items: COpaquePointer?): CFMutableSetRef? =
+    mutableSetOf(*items).toMutableCFSet()
+
+fun CFMutableSetRef.set(value: COpaquePointer?) {
+    CFSetSetValue(this, value)
+}
+
+fun CFMutableSetRef.remove(value: COpaquePointer?) {
+    CFSetRemoveValue(this, value)
+}
+
+@Suppress("UNCHECKED_CAST")
+fun CFMutableSetRef.toMutableMap() = CFBridgingRelease(this) as MutableSet<COpaquePointer?>
+
 fun Map<String, COpaquePointer?>.toCFDictionary(): CFDictionaryRef? =
     (this as NSDictionary).let(::CFBridgingRetain)?.reinterpret()
 
@@ -15,6 +45,8 @@ operator fun CFDictionaryRef.get(key: String): COpaquePointer? = memScoped {
     if (!hasValue) return null
     return value.value ?: error("value for key '$key' not found")
 }
+
+val CFDictionaryRef.size get() = CFDictionaryGetCount(this).toInt()
 
 @Suppress("UNCHECKED_CAST")
 fun CFDictionaryRef.toMap() = CFBridgingRelease(this) as Map<String, COpaquePointer?>
@@ -136,7 +168,7 @@ fun MutableCFDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, cap
 fun mutableCFDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFMutableDictionaryRef? =
     mutableMapOf(*items).toMutableCFDictionary()
 
-operator fun CFMutableDictionaryRef.set(key: String, value: CValuesRef<*>) {
+operator fun CFMutableDictionaryRef.set(key: String, value: COpaquePointer?) {
     CFDictionarySetValue(this, key.toCFString(), value)
 }
 
@@ -152,31 +184,13 @@ fun List<COpaquePointer?>.toCFArray(): CFArrayRef? =
 
 fun cfArrayOf(vararg items: COpaquePointer) = items.toList().toCFArray()
 
-private class CFArrayIterator(private val array: CFArrayRef) : ListIterator<COpaquePointer?> {
-
-    private val count = CFArrayGetCount(array).toInt()
-    private var index = 0
-
-    override fun hasNext() = index < count
-
-    override fun hasPrevious() = index > 0
-
-    override fun next() = CFArrayGetValueAtIndex(array, (index++).toLong())
-
-    override fun nextIndex() = count + 1
-
-    override fun previous() = CFArrayGetValueAtIndex(array, (index--).toLong())
-
-    override fun previousIndex() = count - 1
-}
-
-operator fun CFArrayRef.iterator(): Iterator<COpaquePointer?> = CFArrayIterator(this)
-
 operator fun CFArrayRef.get(index: Int): COpaquePointer? {
     val count = CFArrayGetCount(this)
     check(index <= count - 1) { "Index ($index) out of bounds ($count)" }
     return CFArrayGetValueAtIndex(this@get, index.toLong())
 }
+
+val CFArrayRef.size get() = CFArrayGetCount(this).toInt()
 
 @Suppress("UNCHECKED_CAST")
 fun CFArrayRef.asList() = CFBridgingRelease(this) as List<COpaquePointer?>
