@@ -11,7 +11,7 @@ import platform.CoreServices.*
 actual fun watchFile(vararg filePath: String) = channelFlow<Unit> {
     val runLoop = CFRunLoopGetCurrent()
 
-    val pathsToWatch = cfArrayOf(*filePath.map(String::toCFString).toTypedArray())
+    val pathsToWatch = filePath.map(String::toCFString).toCFArray()
     val callback: FSEventStreamCallback =
         staticCFunction { streamRef, clientCallBackInfo, numEvents, eventPaths, eventFlags, eventIds ->
             clientCallBackInfo?.reinterpret<FSEventStreamContext>()

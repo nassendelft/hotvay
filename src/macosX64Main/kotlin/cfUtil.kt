@@ -1,16 +1,11 @@
 import kotlinx.cinterop.*
 import platform.CoreFoundation.*
-import platform.Foundation.CFBridgingRetain
-import platform.Foundation.NSNumber
+import platform.Foundation.*
 
-fun mutableCFDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, capacity.toLong(), null, null)
+fun Map<String, COpaquePointer?>.toCFDictionary(): CFDictionaryRef? =
+    (this as NSDictionary).let(::CFBridgingRetain)?.reinterpret()
 
-operator fun CFMutableDictionaryRef.set(key: String, value: CValuesRef<*>) {
-    CFDictionarySetValue(this, key.toCFString(), value)
-}
-
-fun cfDictionaryOf(vararg items: Pair<String, CValuesRef<*>>) = mutableCFDictionary(items.size)
-    ?.apply { items.forEach { (key, value) -> set(key, value) } }
+fun cfDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFDictionaryRef? = mapOf(*items).toCFDictionary()
 
 operator fun CFDictionaryRef.get(key: String): COpaquePointer? = memScoped {
     val cfKey = key.toCFString()
@@ -20,6 +15,9 @@ operator fun CFDictionaryRef.get(key: String): COpaquePointer? = memScoped {
     if (!hasValue) return null
     return value.value ?: error("value for key '$key' not found")
 }
+
+@Suppress("UNCHECKED_CAST")
+fun CFDictionaryRef.toMap() = CFBridgingRelease(this) as Map<String, COpaquePointer?>
 
 fun CFDictionaryRef.getCFDictionary(key: String) = checkNotNull(getCFDictionaryOrNull(key))
 
@@ -129,10 +127,50 @@ fun CFDictionaryRef.getDoubleOrNull(key: String): Double? {
     return numberValue?.getDouble()
 }
 
-fun mutableCFArrayOf(size: Int = 0) = CFArrayCreateMutable(null, size.toLong(), null)
+fun MutableMap<String, *>.toMutableCFDictionary(): CFMutableDictionaryRef? =
+    (this as NSMutableDictionary).let(::CFBridgingRetain)?.reinterpret()
 
-fun cfArrayOf(vararg items: COpaquePointer) = mutableCFArrayOf(items.size)
-    ?.apply { items.forEachIndexed(::set) }
+@Suppress("FunctionName")
+fun MutableCFDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, capacity.toLong(), null, null)
+
+fun mutableCFDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFMutableDictionaryRef? =
+    mutableMapOf(*items).toMutableCFDictionary()
+
+operator fun CFMutableDictionaryRef.set(key: String, value: CValuesRef<*>) {
+    CFDictionarySetValue(this, key.toCFString(), value)
+}
+
+fun CFMutableDictionaryRef.remove(key: String) {
+    CFDictionaryRemoveValue(this, key.toCFString())
+}
+
+@Suppress("UNCHECKED_CAST")
+fun CFMutableDictionaryRef.toMutableMap() = CFBridgingRelease(this) as MutableMap<String, COpaquePointer?>
+
+fun List<COpaquePointer?>.toCFArray(): CFArrayRef? =
+    (this as NSArray).let(::CFBridgingRetain)?.reinterpret()
+
+fun cfArrayOf(vararg items: COpaquePointer) = items.toList().toCFArray()
+
+private class CFArrayIterator(private val array: CFArrayRef) : ListIterator<COpaquePointer?> {
+
+    private val count = CFArrayGetCount(array).toInt()
+    private var index = 0
+
+    override fun hasNext() = index < count
+
+    override fun hasPrevious() = index > 0
+
+    override fun next() = CFArrayGetValueAtIndex(array, (index++).toLong())
+
+    override fun nextIndex() = count + 1
+
+    override fun previous() = CFArrayGetValueAtIndex(array, (index--).toLong())
+
+    override fun previousIndex() = count - 1
+}
+
+operator fun CFArrayRef.iterator(): Iterator<COpaquePointer?> = CFArrayIterator(this)
 
 operator fun CFArrayRef.get(index: Int): COpaquePointer? {
     val count = CFArrayGetCount(this)
@@ -140,7 +178,8 @@ operator fun CFArrayRef.get(index: Int): COpaquePointer? {
     return CFArrayGetValueAtIndex(this@get, index.toLong())
 }
 
-operator fun CFArrayRef.set(index: Int, item: COpaquePointer) = CFArraySetValueAtIndex(this, index.toLong(), item)
+@Suppress("UNCHECKED_CAST")
+fun CFArrayRef.asList() = CFBridgingRelease(this) as List<COpaquePointer?>
 
 fun CFArrayRef.getCFDictionary(index: Int) = checkNotNull(getCFDictionaryOrNull(index))
 
@@ -249,6 +288,23 @@ fun CFArrayRef.getDoubleOrNull(index: Int): Double? {
     val numberValue: CFNumberRef? = value?.reinterpret()
     return numberValue?.getDouble()
 }
+
+fun MutableList<COpaquePointer?>.toMutableCFArray(): CFMutableArrayRef? =
+    (this as NSMutableArray).let(::CFBridgingRetain)?.reinterpret()
+
+@Suppress("FunctionName")
+fun MutableCFArray(size: Int = 0) = CFArrayCreateMutable(null, size.toLong(), null)
+
+fun mutableCFArrayOf(vararg items: COpaquePointer?): CFMutableArrayRef? = mutableListOf(*items).toMutableCFArray()
+
+operator fun CFMutableArrayRef.set(index: Int, item: COpaquePointer) =
+    CFArraySetValueAtIndex(this, index.toLong(), item)
+
+fun CFMutableArrayRef.insert(index: Int, item: COpaquePointer) =
+    CFArrayInsertValueAtIndex(this, index.toLong(), item)
+
+fun CFMutableArrayRef.remove(index: Int) =
+    CFArrayRemoveValueAtIndex(this, index.toLong())
 
 fun CFNumberRef.getLong(): Long = memScoped {
     val value: LongVar = alloc()
