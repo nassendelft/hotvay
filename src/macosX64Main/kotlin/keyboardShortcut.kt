@@ -19,13 +19,9 @@ fun readKeyboardShortcutChanges(shortcutId: String): Flow<KeyboardShortcut> {
 }
 
 fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut = cfMemScoped {
-    val key = cfString("AppleSymbolicHotKeys")
-    val appId = cfString(symbolicHotKeys)
-    val hotkeyPrefList: CFDictionaryRef = cfType(CFPreferencesCopyAppValue(key, appId))
-        ?.asCFDictionary()
-        ?: error("Could not read keyboard shortcuts")
-
-    val shortcutDict = hotkeyPrefList.getCFDictionary(shortcutId)
+    val shortcutDict = readAppPreference("AppleSymbolicHotKeys", symbolicHotKeys)
+        .asCFDictionary()
+        .getCFDictionary(shortcutId)
 
     val enabled = shortcutDict.getBoolean("enabled")
 
@@ -62,3 +58,8 @@ data class KeyboardShortcut(
     val modifiers: List<Modifiers>,
     val virtualKeyCode: Long
 )
+
+private fun CFMemScope.readAppPreference(key: String, appId: String) =
+    CFPreferencesCopyAppValue(cfString(key), cfString(appId))
+        ?.let(::scoped)
+        ?: error("Could not read '$appId.plist'")

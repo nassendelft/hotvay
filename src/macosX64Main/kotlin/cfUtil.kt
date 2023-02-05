@@ -4,35 +4,35 @@ import platform.Foundation.*
 
 class CFMemScope {
 
-    private val items = mutableListOf<CFTypeRef?>()
+    private val items = mutableListOf<CFTypeRef>()
 
-    fun cfType(type: CFTypeRef?) = type.also(items::add)
+    fun scoped(type: CFTypeRef) = type.also(items::add)
 
-    fun cfArray(list: List<COpaquePointer?>) = list.toCFArray().also(items::add)
+    fun cfArray(list: List<COpaquePointer?>) = list.toCFArray().also(::scoped)
 
-    fun cfMutableArray(list: MutableList<COpaquePointer?>) = list.toCFMutableArray().also(items::add)
+    fun cfMutableArray(list: MutableList<COpaquePointer?>) = list.toCFMutableArray().also(::scoped)
 
-    fun cfDictionary(map: Map<String, COpaquePointer?>) = map.toCFDictionary().also(items::add)
+    fun cfDictionary(map: Map<String, COpaquePointer?>) = map.toCFDictionary().also(::scoped)
 
-    fun cfMutableDictionary(map: MutableMap<String, COpaquePointer?>) = map.toCFMutableDictionary().also(items::add)
+    fun cfMutableDictionary(map: MutableMap<String, COpaquePointer?>) = map.toCFMutableDictionary().also(::scoped)
 
-    fun cfSet(set: Set<COpaquePointer?>) = set.toCFSet().also(items::add)
+    fun cfSet(set: Set<COpaquePointer?>) = set.toCFSet().also(::scoped)
 
-    fun cfMutableSet(set: MutableSet<COpaquePointer?>) = set.toCFMutableSet().also(items::add)
+    fun cfMutableSet(set: MutableSet<COpaquePointer?>) = set.toCFMutableSet().also(::scoped)
 
-    fun cfString(string: String) = string.toCFString().also(items::add)
+    fun cfString(string: String) = string.toCFString().also(::scoped)
 
-    fun cfNumber(value: Byte) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Byte) = value.toCFNumber().also(::scoped)
 
-    fun cfNumber(value: Short) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Short) = value.toCFNumber().also(::scoped)
 
-    fun cfNumber(value: Int) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Int) = value.toCFNumber().also(::scoped)
 
-    fun cfNumber(value: Long) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Long) = value.toCFNumber().also(::scoped)
 
-    fun cfNumber(value: Float) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Float) = value.toCFNumber().also(::scoped)
 
-    fun cfNumber(value: Double) = value.toCFNumber().also(items::add)
+    fun cfNumber(value: Double) = value.toCFNumber().also(::scoped)
 
     @PublishedApi
     internal fun clear() = items.forEach(::CFRelease)
@@ -47,87 +47,90 @@ inline fun <R> cfMemScoped(block: CFMemScope.() -> R): R {
     }
 }
 
-fun CFTypeRef?.asCFDictionary(): CFDictionaryRef? {
+fun CFTypeRef.asCFDictionary(): CFDictionaryRef {
     check(CFGetTypeID(this) == CFDictionaryGetTypeID()) {
         "value is not of type CFDictionary"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFMutableDictionary(): CFMutableDictionaryRef? {
+fun CFTypeRef.asCFMutableDictionary(): CFMutableDictionaryRef {
     check(CFGetTypeID(this) == CFDictionaryGetTypeID()) {
         "value is not of type CFDictionary"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFArray(): CFArrayRef? {
+fun CFTypeRef.asCFArray(): CFArrayRef {
     check(CFGetTypeID(this) == CFArrayGetTypeID()) {
         "value is not of type CFArray"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFMutableArray(): CFMutableArrayRef? {
+fun CFTypeRef.asCFMutableArray(): CFMutableArrayRef {
     check(CFGetTypeID(this) == CFArrayGetTypeID()) {
         "value is not of type CFArray"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFSet(): CFSetRef? {
+fun CFTypeRef.asCFSet(): CFSetRef {
     check(CFGetTypeID(this) == CFSetGetTypeID()) {
         "value is not of type CFSet"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFMutableSet(): CFMutableSetRef? {
+fun CFTypeRef.asCFMutableSet(): CFMutableSetRef {
     check(CFGetTypeID(this) == CFSetGetTypeID()) {
         "value is not of type CFSet"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFNumber(): CFNumberRef? {
+fun CFTypeRef.asCFNumber(): CFNumberRef {
     check(CFGetTypeID(this) == CFNumberGetTypeID()) {
         "value is not of type CFNumber"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFBoolean(): CFBooleanRef? {
+fun CFTypeRef.asCFBoolean(): CFBooleanRef {
     check(CFGetTypeID(this) == CFBooleanGetTypeID()) {
         "value is not of type CFBoolean"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun CFTypeRef?.asCFString(): CFStringRef? {
+fun CFTypeRef.asCFString(): CFStringRef {
     check(CFGetTypeID(this) == CFStringGetTypeID()) {
         "value is not of type CFString"
     }
-    return this?.reinterpret()
+    return this.reinterpret()
 }
 
-fun Set<COpaquePointer?>.toCFSet(): CFSetRef? =
-    (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
+fun Set<COpaquePointer?>.toCFSet(): CFSetRef = (this as NSSet)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFSet")
 
-fun cfSetOf(vararg items: COpaquePointer?): CFSetRef? = setOf(*items).toCFSet()
+fun cfSetOf(vararg items: COpaquePointer?): CFSetRef = setOf(*items).toCFSet()
 
 @Suppress("UNCHECKED_CAST")
 fun CFSetRef.toSet() = CFBridgingRelease(this) as Set<COpaquePointer?>
 
 val CFSetRef.size get() = CFSetGetCount(this).toInt()
 
-fun MutableSet<*>.toCFMutableSet(): CFMutableSetRef? =
-    (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
+fun MutableSet<*>.toCFMutableSet(): CFMutableSetRef = (this as NSSet)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFMutableSet")
 
 @Suppress("FunctionName")
 fun CFMutableSet(capacity: Int = 0) = CFSetCreateMutable(null, capacity.toLong(), null)
 
-fun cfMutableSetOf(vararg items: COpaquePointer?): CFMutableSetRef? =
-    mutableSetOf(*items).toCFMutableSet()
+fun cfMutableSetOf(vararg items: COpaquePointer?) = mutableSetOf(*items).toCFMutableSet()
 
 fun CFMutableSetRef.set(value: COpaquePointer?) {
     CFSetSetValue(this, value)
@@ -140,10 +143,12 @@ fun CFMutableSetRef.remove(value: COpaquePointer?) {
 @Suppress("UNCHECKED_CAST")
 fun CFMutableSetRef.toMutableMap() = CFBridgingRelease(this) as MutableSet<COpaquePointer?>
 
-fun Map<String, COpaquePointer?>.toCFDictionary(): CFDictionaryRef? =
-    (this as NSDictionary).let(::CFBridgingRetain)?.reinterpret()
+fun Map<String, COpaquePointer?>.toCFDictionary(): CFDictionaryRef = (this as NSDictionary)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFDictionary")
 
-fun cfDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFDictionaryRef? = mapOf(*items).toCFDictionary()
+fun cfDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFDictionaryRef = mapOf(*items).toCFDictionary()
 
 operator fun CFDictionaryRef.get(key: String): COpaquePointer? = memScoped {
     val cfKey = key.toCFString()
@@ -161,52 +166,53 @@ fun CFDictionaryRef.toMap() = CFBridgingRelease(this) as Map<String, COpaquePoin
 
 fun CFDictionaryRef.getCFDictionary(key: String) = checkNotNull(getCFDictionaryOrNull(key))
 
-fun CFDictionaryRef.getCFDictionaryOrNull(key: String) = get(key).asCFDictionary()
+fun CFDictionaryRef.getCFDictionaryOrNull(key: String) = get(key)?.asCFDictionary()
 
 fun CFDictionaryRef.getCFArray(key: String) = checkNotNull(getCFArrayOrNull(key))
 
-fun CFDictionaryRef.getCFArrayOrNull(key: String) = get(key).asCFArray()
+fun CFDictionaryRef.getCFArrayOrNull(key: String) = get(key)?.asCFArray()
 
 fun CFDictionaryRef.getString(key: String) = checkNotNull(getStringOrNull(key))
 
-fun CFDictionaryRef.getStringOrNull(key: String) = get(key).asCFString()?.getString()
+fun CFDictionaryRef.getStringOrNull(key: String) = get(key)?.asCFString()?.getString()
 
 fun CFDictionaryRef.getBoolean(key: String) = checkNotNull(getBooleanOrNull(key))
 
-fun CFDictionaryRef.getBooleanOrNull(key: String) = get(key).asCFBoolean()?.getBoolean()
+fun CFDictionaryRef.getBooleanOrNull(key: String) = get(key)?.asCFBoolean()?.getBoolean()
 
 fun CFDictionaryRef.getLong(key: String) = checkNotNull(getLongOrNull(key))
 
-fun CFDictionaryRef.getLongOrNull(key: String) = get(key).asCFNumber()?.getLong()
+fun CFDictionaryRef.getLongOrNull(key: String) = get(key)?.asCFNumber()?.getLong()
 
 fun CFDictionaryRef.getInt(key: String) = checkNotNull(getIntOrNull(key))
 
-fun CFDictionaryRef.getIntOrNull(key: String) = get(key).asCFNumber()?.getInt()
+fun CFDictionaryRef.getIntOrNull(key: String) = get(key)?.asCFNumber()?.getInt()
 
 fun CFDictionaryRef.getShort(key: String) = checkNotNull(getShortOrNull(key))
 
-fun CFDictionaryRef.getShortOrNull(key: String) = get(key).asCFNumber()?.getShort()
+fun CFDictionaryRef.getShortOrNull(key: String) = get(key)?.asCFNumber()?.getShort()
 
 fun CFDictionaryRef.getByte(key: String) = checkNotNull(getByteOrNull(key))
 
-fun CFDictionaryRef.getByteOrNull(key: String) = get(key).asCFNumber()?.getByte()
+fun CFDictionaryRef.getByteOrNull(key: String) = get(key)?.asCFNumber()?.getByte()
 
 fun CFDictionaryRef.getFloat(key: String) = getFloatOrNull(key)
 
-fun CFDictionaryRef.getFloatOrNull(key: String) = get(key).asCFNumber()?.getFloat()
+fun CFDictionaryRef.getFloatOrNull(key: String) = get(key)?.asCFNumber()?.getFloat()
 
 fun CFDictionaryRef.getDouble(key: String) = checkNotNull(getDoubleOrNull(key))
 
-fun CFDictionaryRef.getDoubleOrNull(key: String) = get(key).asCFNumber()?.getDouble()
+fun CFDictionaryRef.getDoubleOrNull(key: String) = get(key)?.asCFNumber()?.getDouble()
 
-fun MutableMap<String, *>.toCFMutableDictionary(): CFMutableDictionaryRef? =
-    (this as NSMutableDictionary).let(::CFBridgingRetain)?.reinterpret()
+fun MutableMap<String, *>.toCFMutableDictionary(): CFMutableDictionaryRef = (this as NSMutableDictionary)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFMutableDictionary")
 
 @Suppress("FunctionName")
 fun CFMutableDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, capacity.toLong(), null, null)
 
-fun cfMutableDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFMutableDictionaryRef? =
-    mutableMapOf(*items).toCFMutableDictionary()
+fun cfMutableDictionaryOf(vararg items: Pair<String, COpaquePointer?>) = mutableMapOf(*items).toCFMutableDictionary()
 
 operator fun CFMutableDictionaryRef.set(key: String, value: COpaquePointer?) {
     CFDictionarySetValue(this, key.toCFString(), value)
@@ -219,14 +225,15 @@ fun CFMutableDictionaryRef.remove(key: String) {
 @Suppress("UNCHECKED_CAST")
 fun CFMutableDictionaryRef.toMutableMap() = CFBridgingRelease(this) as MutableMap<String, COpaquePointer?>
 
-fun List<COpaquePointer?>.toCFArray(): CFArrayRef? =
-    (this as NSArray).let(::CFBridgingRetain)?.reinterpret()
+fun List<COpaquePointer?>.toCFArray(): CFArrayRef = (this as NSArray)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFArray")
 
 fun cfArrayOf(vararg items: COpaquePointer) = items.toList().toCFArray()
 
 operator fun CFArrayRef.get(index: Int): COpaquePointer? {
-    val count = CFArrayGetCount(this)
-    check(index <= count - 1) { "Index ($index) out of bounds ($count)" }
+    check(index in 0 until size) { "Index out of bounds" }
     return CFArrayGetValueAtIndex(this@get, index.toLong())
 }
 
@@ -237,51 +244,53 @@ fun CFArrayRef.asList() = CFBridgingRelease(this) as List<COpaquePointer?>
 
 fun CFArrayRef.getCFDictionary(index: Int) = checkNotNull(getCFDictionaryOrNull(index))
 
-fun CFArrayRef.getCFDictionaryOrNull(index: Int) = get(index).asCFDictionary()
+fun CFArrayRef.getCFDictionaryOrNull(index: Int) = get(index)?.asCFDictionary()
 
 fun CFArrayRef.getCFArray(index: Int) = checkNotNull(getCFArrayOrNull(index))
 
-fun CFArrayRef.getCFArrayOrNull(index: Int) = get(index).asCFArray()
+fun CFArrayRef.getCFArrayOrNull(index: Int) = get(index)?.asCFArray()
 
 fun CFArrayRef.getString(index: Int) = checkNotNull(getStringOrNull(index))
 
-fun CFArrayRef.getStringOrNull(index: Int) = get(index).asCFString()?.getString()
+fun CFArrayRef.getStringOrNull(index: Int) = get(index)?.asCFString()?.getString()
 
 fun CFArrayRef.getBoolean(index: Int) = checkNotNull(getBooleanOrNull(index))
 
-fun CFArrayRef.getBooleanOrNull(index: Int) = get(index).asCFBoolean()?.getBoolean()
+fun CFArrayRef.getBooleanOrNull(index: Int) = get(index)?.asCFBoolean()?.getBoolean()
 
 fun CFArrayRef.getLong(index: Int) = checkNotNull(getLongOrNull(index))
 
-fun CFArrayRef.getLongOrNull(index: Int) = get(index).asCFNumber()?.getLong()
+fun CFArrayRef.getLongOrNull(index: Int) = get(index)?.asCFNumber()?.getLong()
 
 fun CFArrayRef.getInt(index: Int) = checkNotNull(getIntOrNull(index))
 
-fun CFArrayRef.getIntOrNull(index: Int) = get(index).asCFNumber()?.getInt()
+fun CFArrayRef.getIntOrNull(index: Int) = get(index)?.asCFNumber()?.getInt()
 
 fun CFArrayRef.getShort(index: Int) = checkNotNull(getShortOrNull(index))
 
-fun CFArrayRef.getShortOrNull(index: Int) = get(index).asCFNumber()?.getShort()
+fun CFArrayRef.getShortOrNull(index: Int) = get(index)?.asCFNumber()?.getShort()
 
 fun CFArrayRef.getByte(index: Int) = checkNotNull(getByteOrNull(index))
 
-fun CFArrayRef.getByteOrNull(index: Int) = get(index).asCFNumber()?.getByte()
+fun CFArrayRef.getByteOrNull(index: Int) = get(index)?.asCFNumber()?.getByte()
 
 fun CFArrayRef.getFloat(index: Int) = checkNotNull(getFloatOrNull(index))
 
-fun CFArrayRef.getFloatOrNull(index: Int) = get(index).asCFNumber()?.getFloat()
+fun CFArrayRef.getFloatOrNull(index: Int) = get(index)?.asCFNumber()?.getFloat()
 
 fun CFArrayRef.getDouble(index: Int) = checkNotNull(getDoubleOrNull(index))
 
-fun CFArrayRef.getDoubleOrNull(index: Int) = get(index).asCFNumber()?.getDouble()
+fun CFArrayRef.getDoubleOrNull(index: Int) = get(index)?.asCFNumber()?.getDouble()
 
-fun MutableList<COpaquePointer?>.toCFMutableArray(): CFMutableArrayRef? =
-    (this as NSMutableArray).let(::CFBridgingRetain)?.reinterpret()
+fun MutableList<COpaquePointer?>.toCFMutableArray(): CFMutableArrayRef = (this as NSMutableArray)
+    .let(::CFBridgingRetain)
+    ?.reinterpret()
+    ?: error("Could not convert CFMutableSet")
 
 @Suppress("FunctionName")
 fun CFMutableArray(size: Int = 0) = CFArrayCreateMutable(null, size.toLong(), null)
 
-fun cfMutableArrayOf(vararg items: COpaquePointer?): CFMutableArrayRef? = mutableListOf(*items).toCFMutableArray()
+fun cfMutableArrayOf(vararg items: COpaquePointer?) = mutableListOf(*items).toCFMutableArray()
 
 operator fun CFMutableArrayRef.set(index: Int, item: COpaquePointer) =
     CFArraySetValueAtIndex(this, index.toLong(), item)
@@ -341,20 +350,20 @@ fun CFBooleanRef.getBoolean() = CFBooleanGetValue(this)
 fun String.toCFString() = CFStringCreateWithCString(null, this, kCFStringEncodingUTF8)
     ?: error("Could not create CFString")
 
-fun Byte.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(char = this))?.reinterpret()
+fun Byte.toCFNumber() = CFBridgingRetain(NSNumber(char = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
 
-fun Short.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(short = this))?.reinterpret()
+fun Short.toCFNumber() = CFBridgingRetain(NSNumber(short = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
 
-fun Int.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(int = this))?.reinterpret()
+fun Int.toCFNumber() = CFBridgingRetain(NSNumber(int = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
 
-fun Long.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(long = this))?.reinterpret()
+fun Long.toCFNumber() = CFBridgingRetain(NSNumber(long = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
 
-fun Float.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(float = this))?.reinterpret()
+fun Float.toCFNumber() = CFBridgingRetain(NSNumber(float = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
 
-fun Double.toCFNumber(): CFNumberRef = CFBridgingRetain(NSNumber(double = this))?.reinterpret()
+fun Double.toCFNumber() = CFBridgingRetain(NSNumber(double = this))?.asCFNumber()
     ?: error("Could not create CFNumber")
