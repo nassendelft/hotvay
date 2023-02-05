@@ -18,12 +18,11 @@ fun readKeyboardShortcutChanges(shortcutId: String): Flow<KeyboardShortcut> {
         .map { readKeyboardShortcut(shortcutId) }
 }
 
-fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut {
-    val key = "AppleSymbolicHotKeys".toCFString()
-    val appId = symbolicHotKeys.toCFString()
-    val hotkeyPrefList: CFDictionaryRef = CFPreferencesCopyAppValue(key, appId)
-        ?.takeIf { CFGetTypeID(it) == CFDictionaryGetTypeID() }
-        ?.reinterpret()
+fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut = cfMemScoped {
+    val key = cfString("AppleSymbolicHotKeys")
+    val appId = cfString(symbolicHotKeys)
+    val hotkeyPrefList: CFDictionaryRef = cfType(CFPreferencesCopyAppValue(key, appId))
+        ?.asCFDictionary()
         ?: error("Could not read keyboard shortcuts")
 
     val shortcutDict = hotkeyPrefList.getCFDictionary(shortcutId)
@@ -37,10 +36,6 @@ fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut {
     val mask = parametersDict.getLong(2)
 
     val modifiers = getModifierVirtualKeyCodes(mask)
-
-    CFRelease(appId)
-    CFRelease(key)
-    CFRelease(hotkeyPrefList)
 
     return KeyboardShortcut(enabled, modifiers, virtualKeyCode)
 }

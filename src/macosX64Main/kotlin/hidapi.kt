@@ -77,9 +77,11 @@ private fun readDevice(deviceRef: IOHIDDeviceRef?, context: COpaquePointer?) = m
 }
 
 private val IOHIDDeviceRef.serial: String?
-    get() {
-        val key = kIOHIDSerialNumberKey.toCFString()
-        val cfString: CFStringRef? = IOHIDDeviceGetProperty(this, key)?.reinterpret()
-        CFRelease(key)
-        return cfString?.getString()
+    get() = cfMemScoped {
+        val property = IOHIDDeviceGetProperty(this@serial, cfString(kIOHIDSerialNumberKey))
+        check(CFGetTypeID(property) == CFStringGetTypeID()) {
+            "value is not of type CFString"
+        }
+        @Suppress("UNCHECKED_CAST")
+        return (property as? CFStringRef)?.getString()
     }

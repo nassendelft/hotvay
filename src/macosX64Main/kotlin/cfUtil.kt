@@ -2,6 +2,114 @@ import kotlinx.cinterop.*
 import platform.CoreFoundation.*
 import platform.Foundation.*
 
+class CFMemScope {
+
+    private val items = mutableListOf<CFTypeRef?>()
+
+    fun cfType(type: CFTypeRef?) = type.also(items::add)
+
+    fun cfArray(list: List<COpaquePointer?>) = list.toCFArray().also(items::add)
+
+    fun cfMutableArray(list: MutableList<COpaquePointer?>) = list.toCFMutableArray().also(items::add)
+
+    fun cfDictionary(map: Map<String, COpaquePointer?>) = map.toCFDictionary().also(items::add)
+
+    fun cfMutableDictionary(map: MutableMap<String, COpaquePointer?>) = map.toCFMutableDictionary().also(items::add)
+
+    fun cfSet(set: Set<COpaquePointer?>) = set.toCFSet().also(items::add)
+
+    fun cfMutableSet(set: MutableSet<COpaquePointer?>) = set.toCFMutableSet().also(items::add)
+
+    fun cfString(string: String) = string.toCFString().also(items::add)
+
+    fun cfNumber(value: Byte) = value.toCFNumber().also(items::add)
+
+    fun cfNumber(value: Short) = value.toCFNumber().also(items::add)
+
+    fun cfNumber(value: Int) = value.toCFNumber().also(items::add)
+
+    fun cfNumber(value: Long) = value.toCFNumber().also(items::add)
+
+    fun cfNumber(value: Float) = value.toCFNumber().also(items::add)
+
+    fun cfNumber(value: Double) = value.toCFNumber().also(items::add)
+
+    @PublishedApi
+    internal fun clear() = items.forEach(::CFRelease)
+}
+
+inline fun <R> cfMemScoped(block: CFMemScope.() -> R): R {
+    val scope = CFMemScope()
+    try {
+        return scope.block()
+    } finally {
+        scope.clear()
+    }
+}
+
+fun CFTypeRef?.asCFDictionary(): CFDictionaryRef? {
+    check(CFGetTypeID(this) == CFDictionaryGetTypeID()) {
+        "value is not of type CFDictionary"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFMutableDictionary(): CFMutableDictionaryRef? {
+    check(CFGetTypeID(this) == CFDictionaryGetTypeID()) {
+        "value is not of type CFDictionary"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFArray(): CFArrayRef? {
+    check(CFGetTypeID(this) == CFArrayGetTypeID()) {
+        "value is not of type CFArray"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFMutableArray(): CFMutableArrayRef? {
+    check(CFGetTypeID(this) == CFArrayGetTypeID()) {
+        "value is not of type CFArray"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFSet(): CFSetRef? {
+    check(CFGetTypeID(this) == CFSetGetTypeID()) {
+        "value is not of type CFSet"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFMutableSet(): CFMutableSetRef? {
+    check(CFGetTypeID(this) == CFSetGetTypeID()) {
+        "value is not of type CFSet"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFNumber(): CFNumberRef? {
+    check(CFGetTypeID(this) == CFNumberGetTypeID()) {
+        "value is not of type CFNumber"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFBoolean(): CFBooleanRef? {
+    check(CFGetTypeID(this) == CFBooleanGetTypeID()) {
+        "value is not of type CFBoolean"
+    }
+    return this?.reinterpret()
+}
+
+fun CFTypeRef?.asCFString(): CFStringRef? {
+    check(CFGetTypeID(this) == CFStringGetTypeID()) {
+        "value is not of type CFString"
+    }
+    return this?.reinterpret()
+}
+
 fun Set<COpaquePointer?>.toCFSet(): CFSetRef? =
     (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
 
@@ -12,14 +120,14 @@ fun CFSetRef.toSet() = CFBridgingRelease(this) as Set<COpaquePointer?>
 
 val CFSetRef.size get() = CFSetGetCount(this).toInt()
 
-fun MutableSet<*>.toMutableCFSet(): CFMutableSetRef? =
+fun MutableSet<*>.toCFMutableSet(): CFMutableSetRef? =
     (this as NSSet).let(::CFBridgingRetain)?.reinterpret()
 
 @Suppress("FunctionName")
-fun MutableCFSet(capacity: Int = 0) = CFSetCreateMutable(null, capacity.toLong(), null)
+fun CFMutableSet(capacity: Int = 0) = CFSetCreateMutable(null, capacity.toLong(), null)
 
-fun mutableCFSetOf(vararg items: COpaquePointer?): CFMutableSetRef? =
-    mutableSetOf(*items).toMutableCFSet()
+fun cfMutableSetOf(vararg items: COpaquePointer?): CFMutableSetRef? =
+    mutableSetOf(*items).toCFMutableSet()
 
 fun CFMutableSetRef.set(value: COpaquePointer?) {
     CFSetSetValue(this, value)
@@ -53,120 +161,52 @@ fun CFDictionaryRef.toMap() = CFBridgingRelease(this) as Map<String, COpaquePoin
 
 fun CFDictionaryRef.getCFDictionary(key: String) = checkNotNull(getCFDictionaryOrNull(key))
 
-fun CFDictionaryRef.getCFDictionaryOrNull(key: String): CFDictionaryRef? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFDictionaryGetTypeID()) {
-        "value is not of type CFDictionary"
-    }
-    return value?.reinterpret()
-}
+fun CFDictionaryRef.getCFDictionaryOrNull(key: String) = get(key).asCFDictionary()
 
 fun CFDictionaryRef.getCFArray(key: String) = checkNotNull(getCFArrayOrNull(key))
 
-fun CFDictionaryRef.getCFArrayOrNull(key: String): CFArrayRef? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFArrayGetTypeID()) {
-        "value is not of type CFArray"
-    }
-    return value?.reinterpret()
-}
+fun CFDictionaryRef.getCFArrayOrNull(key: String) = get(key).asCFArray()
 
 fun CFDictionaryRef.getString(key: String) = checkNotNull(getStringOrNull(key))
 
-fun CFDictionaryRef.getStringOrNull(key: String): String? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFStringGetTypeID()) {
-        "value is not of type CFBoolean"
-    }
-    val stringValue: CFStringRef = value?.reinterpret() ?: return null
-    return stringValue.getString()
-}
+fun CFDictionaryRef.getStringOrNull(key: String) = get(key).asCFString()?.getString()
 
 fun CFDictionaryRef.getBoolean(key: String) = checkNotNull(getBooleanOrNull(key))
 
-fun CFDictionaryRef.getBooleanOrNull(key: String): Boolean? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFBooleanGetTypeID()) {
-        "value is not of type CFBoolean"
-    }
-    val boolValue: CFBooleanRef = value?.reinterpret() ?: return null
-    return CFBooleanGetValue(boolValue)
-}
+fun CFDictionaryRef.getBooleanOrNull(key: String) = get(key).asCFBoolean()?.getBoolean()
 
 fun CFDictionaryRef.getLong(key: String) = checkNotNull(getLongOrNull(key))
 
-fun CFDictionaryRef.getLongOrNull(key: String): Long? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getLong()
-}
+fun CFDictionaryRef.getLongOrNull(key: String) = get(key).asCFNumber()?.getLong()
 
 fun CFDictionaryRef.getInt(key: String) = checkNotNull(getIntOrNull(key))
 
-fun CFDictionaryRef.getIntOrNull(key: String): Int? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getInt()
-}
+fun CFDictionaryRef.getIntOrNull(key: String) = get(key).asCFNumber()?.getInt()
 
 fun CFDictionaryRef.getShort(key: String) = checkNotNull(getShortOrNull(key))
 
-fun CFDictionaryRef.getShortOrNull(key: String): Short? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getShort()
-}
+fun CFDictionaryRef.getShortOrNull(key: String) = get(key).asCFNumber()?.getShort()
 
 fun CFDictionaryRef.getByte(key: String) = checkNotNull(getByteOrNull(key))
 
-fun CFDictionaryRef.getByteOrNull(key: String): Byte? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getByte()
-}
+fun CFDictionaryRef.getByteOrNull(key: String) = get(key).asCFNumber()?.getByte()
 
 fun CFDictionaryRef.getFloat(key: String) = getFloatOrNull(key)
 
-fun CFDictionaryRef.getFloatOrNull(key: String): Float? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getFloat()
-}
+fun CFDictionaryRef.getFloatOrNull(key: String) = get(key).asCFNumber()?.getFloat()
 
 fun CFDictionaryRef.getDouble(key: String) = checkNotNull(getDoubleOrNull(key))
 
-fun CFDictionaryRef.getDoubleOrNull(key: String): Double? {
-    val value = get(key)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getDouble()
-}
+fun CFDictionaryRef.getDoubleOrNull(key: String) = get(key).asCFNumber()?.getDouble()
 
-fun MutableMap<String, *>.toMutableCFDictionary(): CFMutableDictionaryRef? =
+fun MutableMap<String, *>.toCFMutableDictionary(): CFMutableDictionaryRef? =
     (this as NSMutableDictionary).let(::CFBridgingRetain)?.reinterpret()
 
 @Suppress("FunctionName")
-fun MutableCFDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, capacity.toLong(), null, null)
+fun CFMutableDictionary(capacity: Int = 0) = CFDictionaryCreateMutable(null, capacity.toLong(), null, null)
 
-fun mutableCFDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFMutableDictionaryRef? =
-    mutableMapOf(*items).toMutableCFDictionary()
+fun cfMutableDictionaryOf(vararg items: Pair<String, COpaquePointer?>): CFMutableDictionaryRef? =
+    mutableMapOf(*items).toCFMutableDictionary()
 
 operator fun CFMutableDictionaryRef.set(key: String, value: COpaquePointer?) {
     CFDictionarySetValue(this, key.toCFString(), value)
@@ -197,119 +237,51 @@ fun CFArrayRef.asList() = CFBridgingRelease(this) as List<COpaquePointer?>
 
 fun CFArrayRef.getCFDictionary(index: Int) = checkNotNull(getCFDictionaryOrNull(index))
 
-fun CFArrayRef.getCFDictionaryOrNull(index: Int): CFDictionaryRef? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFDictionaryGetTypeID()) {
-        "value is not of type CFDictionary"
-    }
-    return value?.reinterpret()
-}
+fun CFArrayRef.getCFDictionaryOrNull(index: Int) = get(index).asCFDictionary()
 
 fun CFArrayRef.getCFArray(index: Int) = checkNotNull(getCFArrayOrNull(index))
 
-fun CFArrayRef.getCFArrayOrNull(index: Int): CFArrayRef? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFArrayGetTypeID()) {
-        "value is not of type CFArray"
-    }
-    return value?.reinterpret()
-}
+fun CFArrayRef.getCFArrayOrNull(index: Int) = get(index).asCFArray()
 
 fun CFArrayRef.getString(index: Int) = checkNotNull(getStringOrNull(index))
 
-fun CFArrayRef.getStringOrNull(index: Int): String? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFStringGetTypeID()) {
-        "value is not of type CFBoolean"
-    }
-    val stringValue: CFStringRef = value?.reinterpret() ?: return null
-    return stringValue.getString()
-}
+fun CFArrayRef.getStringOrNull(index: Int) = get(index).asCFString()?.getString()
 
 fun CFArrayRef.getBoolean(index: Int) = checkNotNull(getBooleanOrNull(index))
 
-fun CFArrayRef.getBooleanOrNull(index: Int): Boolean? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFBooleanGetTypeID()) {
-        "value is not of type CFBoolean"
-    }
-    val boolValue: CFBooleanRef = value?.reinterpret() ?: return null
-    return CFBooleanGetValue(boolValue)
-}
+fun CFArrayRef.getBooleanOrNull(index: Int) = get(index).asCFBoolean()?.getBoolean()
 
 fun CFArrayRef.getLong(index: Int) = checkNotNull(getLongOrNull(index))
 
-fun CFArrayRef.getLongOrNull(index: Int): Long? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getLong()
-}
+fun CFArrayRef.getLongOrNull(index: Int) = get(index).asCFNumber()?.getLong()
 
 fun CFArrayRef.getInt(index: Int) = checkNotNull(getIntOrNull(index))
 
-fun CFArrayRef.getIntOrNull(index: Int): Int? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getInt()
-}
+fun CFArrayRef.getIntOrNull(index: Int) = get(index).asCFNumber()?.getInt()
 
 fun CFArrayRef.getShort(index: Int) = checkNotNull(getShortOrNull(index))
 
-fun CFArrayRef.getShortOrNull(index: Int): Short? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getShort()
-}
+fun CFArrayRef.getShortOrNull(index: Int) = get(index).asCFNumber()?.getShort()
 
 fun CFArrayRef.getByte(index: Int) = checkNotNull(getByteOrNull(index))
 
-fun CFArrayRef.getByteOrNull(index: Int): Byte? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getByte()
-}
+fun CFArrayRef.getByteOrNull(index: Int) = get(index).asCFNumber()?.getByte()
 
 fun CFArrayRef.getFloat(index: Int) = checkNotNull(getFloatOrNull(index))
 
-fun CFArrayRef.getFloatOrNull(index: Int): Float? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getFloat()
-}
+fun CFArrayRef.getFloatOrNull(index: Int) = get(index).asCFNumber()?.getFloat()
 
 fun CFArrayRef.getDouble(index: Int) = checkNotNull(getDoubleOrNull(index))
 
-fun CFArrayRef.getDoubleOrNull(index: Int): Double? {
-    val value = get(index)
-    check(CFGetTypeID(value) == CFNumberGetTypeID()) {
-        "value is not of type CFNumber"
-    }
-    val numberValue: CFNumberRef? = value?.reinterpret()
-    return numberValue?.getDouble()
-}
+fun CFArrayRef.getDoubleOrNull(index: Int) = get(index).asCFNumber()?.getDouble()
 
-fun MutableList<COpaquePointer?>.toMutableCFArray(): CFMutableArrayRef? =
+fun MutableList<COpaquePointer?>.toCFMutableArray(): CFMutableArrayRef? =
     (this as NSMutableArray).let(::CFBridgingRetain)?.reinterpret()
 
 @Suppress("FunctionName")
-fun MutableCFArray(size: Int = 0) = CFArrayCreateMutable(null, size.toLong(), null)
+fun CFMutableArray(size: Int = 0) = CFArrayCreateMutable(null, size.toLong(), null)
 
-fun mutableCFArrayOf(vararg items: COpaquePointer?): CFMutableArrayRef? = mutableListOf(*items).toMutableCFArray()
+fun cfMutableArrayOf(vararg items: COpaquePointer?): CFMutableArrayRef? = mutableListOf(*items).toCFMutableArray()
 
 operator fun CFMutableArrayRef.set(index: Int, item: COpaquePointer) =
     CFArraySetValueAtIndex(this, index.toLong(), item)
@@ -363,6 +335,8 @@ fun CFNumberRef.getDouble(): Double = memScoped {
 }
 
 fun CFStringRef.getString() = CFStringGetCStringPtr(this, kCFStringEncodingUTF8)?.toKStringFromUtf8()
+
+fun CFBooleanRef.getBoolean() = CFBooleanGetValue(this)
 
 fun String.toCFString() = CFStringCreateWithCString(null, this, kCFStringEncodingUTF8)
     ?: error("Could not create CFString")
