@@ -15,8 +15,8 @@ internal actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<D
     val managerRef = IOHIDManagerCreate(kCFAllocatorDefault, kIOHIDOptionsTypeNone)
 
     val deviceMatch = cfDictionaryOf(
-        kIOHIDVendorIDKey to vendorId.toCFNumber(),
-        kIOHIDProductIDKey to productId.toCFNumber()
+        kIOHIDVendorIDKey.toCFString() to vendorId.toCFNumber(),
+        kIOHIDProductIDKey.toCFString() to productId.toCFNumber()
     )
 
     IOHIDManagerSetDeviceMatching(managerRef, deviceMatch)
@@ -50,7 +50,7 @@ internal actual fun connectDevice(vendorId: Int, productId: Int) = channelFlow<D
     invokeOnClose {
         IOHIDManagerClose(managerRef, kIOHIDOptionsTypeNone)
         context.dispose()
-        CFRelease(deviceMatch)
+        deviceMatch.release()
         CFRunLoopStop(runLoop)
     }
 
@@ -77,8 +77,8 @@ private fun readDevice(deviceRef: IOHIDDeviceRef?, context: COpaquePointer?) = m
 }
 
 private val IOHIDDeviceRef.serial: String?
-    get() = cfMemScoped {
+    get() = CFMemScope.cfMemScoped {
         IOHIDDeviceGetProperty(this@serial, cfString(kIOHIDSerialNumberKey))
             ?.asCFString()
-            ?.getString()
+            ?.stringValue
     }

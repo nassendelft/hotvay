@@ -25,6 +25,10 @@ kotlin {
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
             }
         }
-        val macosX64Main by getting
+        val macosX64Main by getting {
+            dependencies {
+                implementation("nl.ncaj:core-foundation-extensions:0.1.1")
+            }
+        }
     }
 }

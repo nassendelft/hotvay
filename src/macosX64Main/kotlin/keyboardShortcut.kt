@@ -1,31 +1,31 @@
-import kotlinx.cinterop.*
+import CFMemScope.Companion.cfMemScoped
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
-import platform.CoreFoundation.*
+import platform.CoreFoundation.CFPreferencesCopyAppValue
 import platform.Foundation.NSLibraryDirectory
 import platform.Foundation.NSSearchPathForDirectoriesInDomains
 import platform.Foundation.NSUserDomainMask
 
 const val kSHKMoveFocusToNextWindow = "27"
 
-private const val symbolicHotKeys = "com.apple.symbolichotkeys"
+private const val SYMBOLIC_HOT_KEYS = "com.apple.symbolichotkeys"
 
 fun readKeyboardShortcutChanges(shortcutId: String): Flow<KeyboardShortcut> {
     val libraryDir = NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, true).first()
-    return watchFile("$libraryDir/Preferences/$symbolicHotKeys.plist")
+    return watchFile("$libraryDir/Preferences/$SYMBOLIC_HOT_KEYS.plist")
         .onStart { emit(Unit) } // forces first read
         .map { readKeyboardShortcut(shortcutId) }
 }
 
 fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut = cfMemScoped {
-    val shortcutDict = readAppPreference("AppleSymbolicHotKeys", symbolicHotKeys)
+    val shortcutDict = readAppPreference("AppleSymbolicHotKeys", SYMBOLIC_HOT_KEYS)
         .asCFDictionary()
-        .getCFDictionary(shortcutId)
+        .getCFDictionary(cfString(shortcutId))
 
-    val enabled = shortcutDict.getBoolean("enabled")
+    val enabled = shortcutDict.getBoolean(cfString("enabled"))
 
-    val parametersDict = shortcutDict.getCFDictionary("value").getCFArray("parameters")
+    val parametersDict = shortcutDict.getCFDictionary(cfString("value")).getCFArray(cfString("parameters"))
 
     val virtualKeyCode = parametersDict.getLong(1)
 
@@ -36,7 +36,7 @@ fun readKeyboardShortcut(shortcutId: String): KeyboardShortcut = cfMemScoped {
     return KeyboardShortcut(enabled, modifiers, virtualKeyCode)
 }
 
-private fun getModifierVirtualKeyCodes(mask: Long): List<Modifiers> = memScoped {
+private fun getModifierVirtualKeyCodes(mask: Long): List<Modifiers> {
     println("[DEBUG] shortcut modifier mask: $mask")
     val modifiers = mutableListOf<Modifiers>()
     if (mask and 0x100000L == 0x100000L) modifiers.add(Modifiers.COMMAND)
