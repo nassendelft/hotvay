@@ -1,10 +1,16 @@
 import kotlinx.coroutines.flow.*
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 
 private val FILE_CONFIG = userHomeDir?.let { "$it/.hotvay" }
     ?: error("could not determine home dir")
+
+internal expect fun createModule(): SerializersModule
+
+private val json = Json { serializersModule = createModule() }
 
 fun readConfiguration() = watchFile(FILE_CONFIG)
     .onEach { println("[INFO] config file change detected") }
@@ -13,7 +19,7 @@ fun readConfiguration() = watchFile(FILE_CONFIG)
     .distinctUntilChanged()
     .mapNotNull {
         try {
-            Json.decodeFromString<ConfigFile>(it)
+            json.decodeFromString<ConfigFile>(it)
         } catch (e: Exception) {
             println("[ERROR] Failed parsing config file: ${e.message}")
             null
@@ -31,12 +37,18 @@ data class ConfigFile(
 )
 
 @Serializable
-data class ConfigRegistration(
-    val key: KeyType,
-    val description: String,
-    val appBundleId: String? = null,
-    val command: Command? = null
-)
+abstract class ConfigRegistration {
+    abstract val key: KeyType
+    abstract val description: String
+}
+
+@Serializable
+@SerialName("command")
+class CommandConfigRegistration(
+    override val key: KeyType,
+    override val description: String,
+    val command: Command
+) : ConfigRegistration()
 
 @Serializable
 data class Command(

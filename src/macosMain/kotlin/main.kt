@@ -16,13 +16,13 @@ var moveFocusToNextWindowShortcut: KeyboardShortcut = readKeyboardShortcut(kSHKM
 
 @OptIn(DelicateCoroutinesApi::class)
 fun main(): Unit = runBlocking {
-    val handler = CoroutineExceptionHandler { _, exception ->
+    val context = Dispatchers.Main + CoroutineExceptionHandler { _, exception ->
         println("CoroutineExceptionHandler got $exception")
     }
 
-    GlobalScope.launch(Dispatchers.Main + handler) { runApplication() }
+    GlobalScope.launch(context) { runApplication() }
 
-    GlobalScope.launch(Dispatchers.Main + handler) {
+    GlobalScope.launch(context) {
         readKeyboardShortcutChanges(kSHKMoveFocusToNextWindow)
             .onEach { println("[INFO] shortcut config change detected") }
             .onEach { moveFocusToNextWindowShortcut = it }
